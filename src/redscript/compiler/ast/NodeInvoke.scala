@@ -7,7 +7,7 @@ class NodeArgument(val expr: NodeExpr, val expand: Boolean) extends AST
     override def assemble(method: MethodVisitor): Unit = ()
 }
 
-class NodeInvokeAttr(val attr: NodeAttr, val invoke: NodeInvokeStack) extends AST
+class NodeInvokeAttr(val attr: NodeName, val invoke: NodeInvokeStack) extends AST
 {
     override def assemble(method: MethodVisitor): Unit = ()
 }

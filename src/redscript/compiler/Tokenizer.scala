@@ -1,11 +1,16 @@
 package redscript.compiler
 
+import java.text.Normalizer
+
 import scala.language.postfixOps
+import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.combinator.lexical.StdLexical
 import scala.util.parsing.input.CharArrayReader._
 
-class Tokenizer extends StdLexical with TokenSpace
+class Tokenizer extends StdLexical with TokenSpace with RegexParsers
 {
+    override type Elem = Char
+
     reserved.clear()
     delimiters.clear()
 
@@ -36,7 +41,7 @@ class Tokenizer extends StdLexical with TokenSpace
 
     delimiters ++= List(
         "("  , ")"  , "[" , "]" , "{" , "}" ,
-        "->" ,
+        "->" , "=>" ,
         "==" , "!=" , "=" ,
         "&&" , "||" , "!" ,
         "&=" , "|=" , "^=",
@@ -74,20 +79,15 @@ class Tokenizer extends StdLexical with TokenSpace
         | 'r' ^^^ '\r'
         | 't' ^^^ '\t')
 
-    private lazy val identifier: Parser[Token] =
-        identChar ~ ((identChar | digit) *) ^^ { case first ~ rest => processIdent(first :: rest mkString) }
-
+    private lazy val identifier: Parser[Token] = """[\p{javaUnicodeIdentifierStart}][\p{javaUnicodeIdentifierPart}']*""".r ^^ processIdent
     private lazy val numberLiteral: Parser[Token] =
-        ( '.' ~> stringOf(digit)                                                        ^^ { case       fract => FloatLit(   s"0.$fract".toFloat) }
-        | stringOf(digit) ~ ('.' ~> stringOf(digit))                                    ^^ { case int ~ fract => FloatLit(s"$int.$fract".toFloat) }
-        | ('0' ~ (elem('b') | 'B')) ~> stringOf(binaryDigit) <~ (elem('l') | 'L')       ^^ { value => LongLit(BigInt(value, 2)) }
-        | ('0' ~ (elem('x') | 'X')) ~> stringOf(hexadecimalDigit) <~ (elem('l') | 'L')  ^^ { value => LongLit(BigInt(value, 16)) }
-        |  '0' ~> stringOf(octalDigit) <~ (elem('l') | 'L')                             ^^ { value => LongLit(BigInt(value)) }
-        | stringOf(digit) <~ (elem('l') | 'L')                                          ^^ { value => LongLit(BigInt(value)) }
-        | ('0' ~ (elem('b') | 'B')) ~> stringOf(binaryDigit)                            ^^ { value => convertInt(value,  2) }
-        | ('0' ~ (elem('x') | 'X')) ~> stringOf(hexadecimalDigit)                       ^^ { value => convertInt(value, 16) }
-        |  '0' ~> stringOf(octalDigit)                                                  ^^ { value => convertInt(value,  8) }
-        | stringOf(digit)                                                               ^^ { value => convertInt(value, 10) })
+        (                    '.' ~> stringOf(digit)                                         ^^ { case       fract => FloatLit(   s"0.$fract".toDouble) }
+        | stringOf(digit) ~ ('.' ~> stringOf(digit))                                        ^^ { case int ~ fract => FloatLit(s"$int.$fract".toDouble) }
+        | stringOf(digit) <~ '.'                                                            ^^ { case int         => FloatLit(s"$int.0"     .toDouble) }
+        | ('0' ~ (elem('b') | 'B')) ~> stringOf(binaryDigit     ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(BigInt(value,  2)) else convertInt(value,  2) }
+        | ('0' ~ (elem('x') | 'X')) ~> stringOf(hexadecimalDigit) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(BigInt(value, 16)) else convertInt(value, 16) }
+        |  '0' ~>                      stringOf(octalDigit      ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(BigInt(value,  8)) else convertInt(value,  8) }
+        |                              stringOf(digit           ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(BigInt(value, 10)) else convertInt(value, 10) })
 
     private lazy val stringLiteral: Parser[Token] =
         ( '\'' ~> '\''  ^^ { case _ => StringLit("") }
@@ -98,16 +98,26 @@ class Tokenizer extends StdLexical with TokenSpace
         | '\"' ~> failure("Unclosed string literal"))
 
     override def token: Parser[Token] =
-        ( delim
-        | EofCh         ^^^ EOF
-        | NewLine.EolCh ^^^ NewLine
-        | whitespace ~> identifier    <~ whitespace
+        ( whitespace ~> identifier    <~ whitespace
         | whitespace ~> numberLiteral <~ whitespace
         | whitespace ~> stringLiteral <~ whitespace
+        | elem('\f')     ^^^ NewLine
+        | elem('\r')     ^^^ NewLine
+        | elem('\n')     ^^^ NewLine
+        | elem('\u0085') ^^^ NewLine
+        | elem('\u2028') ^^^ NewLine
+        | elem('\u2029') ^^^ NewLine
+        | EofCh          ^^^ EOF
+        | delim
         | failure("Illegal character"))
 
+    override def comment: Parser[Any] = '#' ~ (chrExcept(EofCh, '\f', '\r', '\n', '\u0085', '\u2028', '\u2029') *)
+    override def whitespace: Parser[Any] = (comment | whitespaceChar | ('\\' ~ (elem('\f') | '\r' | '\n' | '\u0085' | '\u2028' | '\u2029'))) *
+    override def whitespaceChar: Parser[Char] = elem("whitespace chars", ch => ch != EofCh && ch.isWhitespace && !"\f\r\n\u0085\u2028\u2029".contains(ch))
 
-    override def comment: Parser[Any] = '#' ~ (chrExcept(EofCh, NewLine.EolCh) *)
-    override def whitespace: Parser[Any] = (comment | whitespaceChar | ('\\' ~ NewLine.EolCh)) *
-    override def whitespaceChar: Parser[Char] = elem("whitespace chars", ch => ch != EofCh && ch != NewLine.EolCh && ch.isWhitespace)
+    override protected def processIdent(identifier: String) =
+    {
+        val form = Normalizer.Form.NFC
+        super.processIdent(Normalizer.normalize(identifier, form))
+    }
 }

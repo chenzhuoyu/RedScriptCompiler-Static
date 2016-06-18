@@ -5,36 +5,41 @@ import redscript.compiler.ast.AST
 
 object Main extends App
 {
-    def printAST(ast: Any, indent: Int): Unit = ast match
+    def printAST(ast: Any, indent: Int, name: String): Unit = ast match
     {
-        case null =>
-            println(("| " * indent) + "null")
-
         case x: AST =>
-            println(("| " * indent) + x.getClass.getSimpleName)
+            println(("| " * indent) + s"$name: AST(${x.getClass.getSimpleName})")
             x.getClass.getDeclaredMethods foreach {
                 case method =>
                     if (method.getParameterCount == 0)
-                        printAST(method.invoke(x), indent + 1)
+                        printAST(method.invoke(x), indent + 1, method.getName)
             }
 
         case x: List[_] =>
-            println(("| " * indent) + "List")
-            x foreach (printAST(_, indent + 1))
+            println(("| " * indent) + s"$name: List(${x.length})")
+            x.zipWithIndex foreach { case (item, i) => printAST(item, indent + 1, i.toString) }
 
-        case Left(x) =>
-            println(("| " * indent) + "Left")
-            printAST(x, indent + 1)
+        case Some(x)  => printAST(x, indent, name)
+        case Left(x)  => printAST(x, indent, name)
+        case Right(x) => printAST(x, indent, name)
 
-        case Right(x) =>
-            println(("| " * indent) + "Right")
-            printAST(x, indent + 1)
-
-        case _ =>
-            println(("| " * indent) + "Value " + ast.toString)
+        case null => println(("| " * indent) + s"$name: null")
+        case None => println(("| " * indent) + s"$name: None")
+        case _    => println(("| " * indent) + s"$name: $ast")
     }
 
-    val src = "f[1 + 2]"
+    val src =
+        """
+          | println('fuck')
+          | if x == 2 then {
+          |     println(1)
+          | } else {
+          |     while x != 3 do
+          |     {
+          |         println(x)
+          |     }
+          | }
+        """.stripMargin
     val parser = new Parser(src)
-    printAST(parser.parse, 0)
+    printAST(parser.parse, 0, "ast")
 }

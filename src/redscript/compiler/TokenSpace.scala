@@ -24,7 +24,6 @@ trait TokenSpace extends StdTokens
 
     case object NewLine extends Token
     {
-        final val EolCh = '\n'
         override def chars: String = "<NewLine>"
     }
 }

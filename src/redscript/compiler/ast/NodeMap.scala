@@ -1,4 +1,5 @@
 package redscript.compiler.ast
+
 import org.objectweb.asm.MethodVisitor
 
 class NodeMap(val items: List[NodeMapItem]) extends AST
