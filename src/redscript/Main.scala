@@ -30,7 +30,25 @@ object Main extends App
 
     val src =
         """
-          | print((x, y) => println(x + y))
+          | try
+          | {
+          |     pritnln('fuck')
+          | }
+          | except
+          | {
+          |     case Exception =>
+          |         println('fuck')
+          |
+          |     case e: RuntimeException | java.lang.Throwable =>
+          |     {
+          |         println(e)
+          |         e.printStackTrace()
+          |     }
+          | }
+          | finally
+          | {
+          |     println('hahahaha')
+          | }
           |
         """.stripMargin
     val parser = new Parser(src)

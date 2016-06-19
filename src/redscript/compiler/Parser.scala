@@ -119,8 +119,7 @@ class Parser(val source: String) extends StdTokenParsers
 
     private lazy val parseActualArgs    : Parser[NodeActualArg]     =
         ( line(">") ~> ^(positioned(parseExpr)) <~ (^(guard(")")) withErrorMessage "expansion must be the last one of actual arguments")   ^^ (new NodeActualArg(_, expand = true))
-        |              ^(positioned(parseExpr))                                                                                            ^^ (new NodeActualArg(_, expand = false)))
-
+        |                positioned(parseExpr)                                                                                             ^^ (new NodeActualArg(_, expand = false)))
 
     private lazy val parseFormalArgs    : Parser[NodeFormalArg]     =
         ( line(">") ~> ^(positioned(parseSetName)) <~ (^(guard(")")) withErrorMessage "variadic must be the last one of formal arguments") ^^ (new NodeFormalArg(_, variadic = true))
@@ -166,6 +165,7 @@ class Parser(val source: String) extends StdTokenParsers
     private lazy val parseStatement     : Parser[NodeStatement]     =
         ( positioned(parseIf            ) ^^ (new NodeStatement(_))
         | positioned(parseFor           ) ^^ (new NodeStatement(_))
+        | positioned(parseTry           ) ^^ (new NodeStatement(_))
         | positioned(parseBreak         ) ^^ (new NodeStatement(_))
         | positioned(parseWhile         ) ^^ (new NodeStatement(_))
         | positioned(parseReturn        ) ^^ (new NodeStatement(_))
@@ -212,6 +212,27 @@ class Parser(val source: String) extends StdTokenParsers
         ( line("in") ~> positioned(parseExpr)) ~
         ( line("do") ~> positioned(parseStatement)) ^^ {
             case target ~ expr ~ body => new NodeFor(target, expr, body)
+        }
+
+    private lazy val parseTry           : Parser[NodeTry]           =
+        (line("try") ~> ^(positioned(parseStatement))) ~
+        (^(guard(line("except") | line("finally"))) withErrorMessage "``except'' or ``finally'' blocks expected") ~
+        ((line("except") ~> ^(line("{")) ~> ^(positioned(parseExceptBlock) +) <~ ^(line("}")) <~
+        (^(guard(not(line("except")))) withErrorMessage "duplicated ``except'' block")) ?) ~
+        ((line("finally") ~> ^(positioned(parseStatement)) <~
+        (^(guard(not(line("except")))) withErrorMessage "``finally'' must be placed after the ``except'' block") ~
+        (^(guard(not(line("finally")))) withErrorMessage "duplicated ``finally'' block")) ?) ^^ {
+            case body ~ _ ~ None          ~ Some(finalizer) => new NodeTry(body, Nil, Some(finalizer))
+            case body ~ _ ~ Some(excepts) ~      finalizer  => new NodeTry(body, excepts,  finalizer)
+        }
+
+    private lazy val parseExceptType    : Parser[List[NodeName]]    = rep1sep(positioned(parseGetName), line("."))
+    private lazy val parseExceptName    : Parser[Option[NodeName]]  = opt(positioned(parseGetName) <~ line(":"))
+
+    private lazy val parseExceptBlock   : Parser[NodeExcept]        =
+        (line("case") ~> ^(parseExceptName ~ rep1sep(parseExceptType, line("|"))) ~
+        (^(line("=>")) ~> ^(positioned(parseStatement)))) ^^ {
+            case name ~ excepts ~ body => new NodeExcept(name, excepts, body)
         }
 
     private lazy val parseWhile         : Parser[NodeWhile]         =
