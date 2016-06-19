@@ -1,18 +1,18 @@
 package redscript.compiler.ast
 
-import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.commons.GeneratorAdapter
 
-class NodeArgument(val expr: NodeExpr, val expand: Boolean) extends AST
+class NodeActualArg(val expr: NodeExpr, val expand: Boolean) extends AST
 {
-    override def assemble(method: MethodVisitor): Unit = ()
+    override def assemble(generator: GeneratorAdapter): Unit = ()
 }
 
 class NodeInvokeAttr(val attr: NodeName, val invoke: NodeInvokeStack) extends AST
 {
-    override def assemble(method: MethodVisitor): Unit = ()
+    override def assemble(generator: GeneratorAdapter): Unit = ()
 }
 
-class NodeInvokeStack(val args: List[NodeArgument]) extends AST
+class NodeInvokeStack(val args: List[NodeActualArg]) extends AST
 {
-    override def assemble(method: MethodVisitor): Unit = ()
+    override def assemble(generator: GeneratorAdapter): Unit = ()
 }

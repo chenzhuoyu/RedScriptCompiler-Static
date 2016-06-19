@@ -1,14 +1,9 @@
 package redscript.compiler.ast
 
-import org.objectweb.asm.{MethodVisitor, Opcodes}
+import org.objectweb.asm.commons.GeneratorAdapter
 
-class NodeIntConst(val value: Long) extends AST
+class NodeIntConst(val value: Int) extends AST
 {
-    vtype = classOf[Long]
-    override def assemble(method: MethodVisitor): Unit = value match
-    {
-        case 0 => method.visitInsn(Opcodes.LCONST_0)
-        case 1 => method.visitInsn(Opcodes.LCONST_1)
-        case _ => method.visitLdcInsn(value)
-    }
+    vtype = classOf[Int]
+    override def assemble(generator: GeneratorAdapter): Unit = generator.push(value)
 }

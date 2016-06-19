@@ -30,15 +30,8 @@ object Main extends App
 
     val src =
         """
-          | println('fuck')
-          | if x == 2 then {
-          |     println(1)
-          | } else {
-          |     while x != 3 do
-          |     {
-          |         println(x)
-          |     }
-          | }
+          | print((x, y) => println(x + y))
+          |
         """.stripMargin
     val parser = new Parser(src)
     printAST(parser.parse, 0, "ast")

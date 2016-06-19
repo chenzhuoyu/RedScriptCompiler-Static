@@ -1,5 +1,6 @@
 package redscript.compiler
 
+import java.math.BigInteger
 import java.text.Normalizer
 
 import scala.language.postfixOps
@@ -18,6 +19,7 @@ class Tokenizer extends StdLexical with TokenSpace with RegexParsers
         "do",
         "if",
         "in",
+        "of",
         "def",
         "end",
         "for",
@@ -55,7 +57,7 @@ class Tokenizer extends StdLexical with TokenSpace with RegexParsers
     )
 
     private def stringOf(p: => Parser[Char]): Parser[String] = rep1(p) ^^ (_.mkString)
-    private def convertInt(x: String, radix: Int): Token = try IntLit(java.lang.Long.parseLong(x, radix)) catch { case _: NumberFormatException => LongLit(BigInt(x, radix)) }
+    private def convertInt(x: String, radix: Int): Token = try IntLit(Integer.parseInt(x, radix)) catch { case _: NumberFormatException => LongLit(new BigInteger(x, radix)) }
 
     private lazy val octalDigit      : Parser[Char] = elem("octal digit" , c => '0' <= c && c <= '7')
     private lazy val binaryDigit     : Parser[Char] = elem("binary digit", c => c == '0' || c == '1')
@@ -81,13 +83,11 @@ class Tokenizer extends StdLexical with TokenSpace with RegexParsers
 
     private lazy val identifier: Parser[Token] = """[\p{javaUnicodeIdentifierStart}][\p{javaUnicodeIdentifierPart}']*""".r ^^ processIdent
     private lazy val numberLiteral: Parser[Token] =
-        (                    '.' ~> stringOf(digit)                                         ^^ { case       fract => FloatLit(   s"0.$fract".toDouble) }
-        | stringOf(digit) ~ ('.' ~> stringOf(digit))                                        ^^ { case int ~ fract => FloatLit(s"$int.$fract".toDouble) }
-        | stringOf(digit) <~ '.'                                                            ^^ { case int         => FloatLit(s"$int.0"     .toDouble) }
-        | ('0' ~ (elem('b') | 'B')) ~> stringOf(binaryDigit     ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(BigInt(value,  2)) else convertInt(value,  2) }
-        | ('0' ~ (elem('x') | 'X')) ~> stringOf(hexadecimalDigit) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(BigInt(value, 16)) else convertInt(value, 16) }
-        |  '0' ~>                      stringOf(octalDigit      ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(BigInt(value,  8)) else convertInt(value,  8) }
-        |                              stringOf(digit           ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(BigInt(value, 10)) else convertInt(value, 10) })
+        ( stringOf(digit) ~ ('.' ~> stringOf(digit))                                        ^^ { case int ~ fract => FloatLit(s"$int.$fract".toDouble) }
+        | ('0' ~ (elem('b') | 'B')) ~> stringOf(binaryDigit     ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(new BigInteger(value,  2)) else convertInt(value,  2) }
+        | ('0' ~ (elem('x') | 'X')) ~> stringOf(hexadecimalDigit) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(new BigInteger(value, 16)) else convertInt(value, 16) }
+        |  '0' ~>                      stringOf(octalDigit      ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(new BigInteger(value,  8)) else convertInt(value,  8) }
+        |                              stringOf(digit           ) ~ opt(elem('l') | 'L')    ^^ { case value ~ suffix => if (suffix.isDefined) LongLit(new BigInteger(value, 10)) else convertInt(value, 10) })
 
     private lazy val stringLiteral: Parser[Token] =
         ( '\'' ~> '\''  ^^ { case _ => StringLit("") }

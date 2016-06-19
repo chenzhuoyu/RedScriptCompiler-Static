@@ -1,8 +1,8 @@
 package redscript.compiler.ast
 
-import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.commons.GeneratorAdapter
 
-class NodeAssignment(val targets: List[NodeValue], val expr: NodeExpr) extends AST
+class NodeAssignment(val targets: List[Either[NodeLTuple, NodeValue]], val expr: Either[NodeRTuple, NodeExpr]) extends AST
 {
-    override def assemble(method: MethodVisitor): Unit = ()
+    override def assemble(generator: GeneratorAdapter): Unit = ()
 }

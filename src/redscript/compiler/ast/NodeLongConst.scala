@@ -1,9 +1,18 @@
 package redscript.compiler.ast
 
-import org.objectweb.asm.MethodVisitor
+import java.math.BigInteger
 
-class NodeLongConst(val value: BigInt) extends AST
+import org.objectweb.asm.Type
+import org.objectweb.asm.commons.{GeneratorAdapter, Method}
+
+class NodeLongConst(val value: BigInteger) extends AST
 {
-    vtype = classOf[BigInt]
-    override def assemble(method: MethodVisitor): Unit = method.visitLdcInsn(value)
+    vtype = classOf[BigInteger]
+    override def assemble(generator: GeneratorAdapter): Unit =
+    {
+        generator.newInstance(Type.getType(vtype))
+        generator.push(value.toString(36))
+        generator.push(36)
+        generator.invokeConstructor(Type.getType(vtype), Method.getMethod(vtype.getConstructor(classOf[String], classOf[Int])))
+    }
 }

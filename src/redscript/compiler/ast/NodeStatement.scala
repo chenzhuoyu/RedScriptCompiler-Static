@@ -1,16 +1,16 @@
 package redscript.compiler.ast
 
-import org.objectweb.asm.{MethodVisitor, Opcodes}
+import org.objectweb.asm.commons.GeneratorAdapter
 
 class NodeStatement(val node: AST) extends AST
 {
-    override def assemble(method: MethodVisitor): Unit =
+    override def assemble(generator: GeneratorAdapter): Unit =
     {
-        node.assemble(method)
+        node.assemble(generator)
         node match
         {
-            case _: NodeExpr  => method.visitInsn(Opcodes.POP)
-            case _: NodeValue => method.visitInsn(Opcodes.POP)
+            case _: NodeExpr  => generator.pop()
+            case _: NodeValue => generator.pop()
             case _ =>
         }
     }
