@@ -14,7 +14,7 @@ class Parser(val source: String) extends StdTokenParsers
     /* helper methods */
 
     private def ^[T](p: Parser[T]): Parser[T] = commit(p)
-    private def line[T](p: Parser[T]): Parser[T] = (lexical.NewLine *) ~> p <~ guard(lexical.NewLine *)
+    private def line[T](p: Parser[T]): Parser[T] = p <~ (lexical.NewLine *)
     private def tail[T](p: Parser[T]): Parser[T] = not(lexical.NewLine) ~> p <~ guard(lexical.NewLine *)
 
     /* implicit converters for parsing expressions */
@@ -36,27 +36,27 @@ class Parser(val source: String) extends StdTokenParsers
 
     /* expressions */
 
-    private lazy val parseExpr          : Parser[NodeExpr]          = positioned(parsePair     ) * (tail("->") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "->", y)})
-    private lazy val parsePair          : Parser[NodeExpr]          = positioned(parseBoolOr   ) * (tail("in") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "in", y)})
-    private lazy val parseBoolOr        : Parser[NodeExpr]          = positioned(parseBoolAnd  ) * (tail("||") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "||", y)})
-    private lazy val parseBoolAnd       : Parser[NodeExpr]          = positioned(parseBitOr    ) * (tail("&&") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "&&", y)})
-    private lazy val parseBitOr         : Parser[NodeExpr]          = positioned(parseBitXor   ) * (tail("|" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "|" , y)})
-    private lazy val parseBitXor        : Parser[NodeExpr]          = positioned(parseBitAnd   ) * (tail("^" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "^" , y)})
-    private lazy val parseBitAnd        : Parser[NodeExpr]          = positioned(parseEquals   ) * (tail("&" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "&" , y)})
-    private lazy val parseEquals        : Parser[NodeExpr]          = positioned(parseCompares ) * (tail("!=") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "!=", y)}
-                                                                                                 |  tail("==") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "==", y)})
-    private lazy val parseCompares      : Parser[NodeExpr]          = positioned(parseShifts   ) * (tail("<" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "<" , y)}
-                                                                                                 |  tail(">" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, ">" , y)}
-                                                                                                 |  tail("<=") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "<=", y)}
-                                                                                                 |  tail(">=") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, ">=", y)})
-    private lazy val parseShifts        : Parser[NodeExpr]          = positioned(parseAddSub   ) * (tail("<<") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "<<", y)}
-                                                                                                 |  tail(">>") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, ">>", y)})
-    private lazy val parseAddSub        : Parser[NodeExpr]          = positioned(parseTerm     ) * (tail("+" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "+" , y)}
-                                                                                                 |  tail("-" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "-" , y)})
-    private lazy val parseTerm          : Parser[NodeExpr]          = positioned(parsePower    ) * (tail("*" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "*" , y)}
-                                                                                                 |  tail("/" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "/" , y)}
-                                                                                                 |  tail("%" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "%" , y)})
-    private lazy val parsePower         : Parser[NodeExpr]          = positioned(parseFactor   ) * (tail("**") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "**", y)})
+    private lazy val parseExpr          : Parser[NodeExpr]          = positioned(parsePair      ) * (line("->") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "->", y)})
+    private lazy val parsePair          : Parser[NodeExpr]          = positioned(parseBoolOr    ) * (line("in") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "in", y)})
+    private lazy val parseBoolOr        : Parser[NodeExpr]          = positioned(parseBoolAnd   ) * (line("||") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "||", y)})
+    private lazy val parseBoolAnd       : Parser[NodeExpr]          = positioned(parseBitOr     ) * (line("&&") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "&&", y)})
+    private lazy val parseBitOr         : Parser[NodeExpr]          = positioned(parseBitXor    ) * (line("|" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "|" , y)})
+    private lazy val parseBitXor        : Parser[NodeExpr]          = positioned(parseBitAnd    ) * (line("^" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "^" , y)})
+    private lazy val parseBitAnd        : Parser[NodeExpr]          = positioned(parseEquals    ) * (line("&" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "&" , y)})
+    private lazy val parseEquals        : Parser[NodeExpr]          = positioned(parseCompares  ) * (line("!=") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "!=", y)}
+                                                                                                  |  line("==") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "==", y)})
+    private lazy val parseCompares      : Parser[NodeExpr]          = positioned(parseShifts    ) * (line("<" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "<" , y)}
+                                                                                                  |  line(">" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, ">" , y)}
+                                                                                                  |  line("<=") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "<=", y)}
+                                                                                                  |  line(">=") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, ">=", y)})
+    private lazy val parseShifts        : Parser[NodeExpr]          = positioned(parseAddSub    ) * (line("<<") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "<<", y)}
+                                                                                                  |  line(">>") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, ">>", y)})
+    private lazy val parseAddSub        : Parser[NodeExpr]          = positioned(parseTerm      ) * (line("+" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "+" , y)}
+                                                                                                  |  line("-" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "-" , y)})
+    private lazy val parseTerm          : Parser[NodeExpr]          = positioned(parsePower     ) * (line("*" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "*" , y)}
+                                                                                                  |  line("/" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "/" , y)}
+                                                                                                  |  line("%" ) ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "%" , y)})
+    private lazy val parsePower         : Parser[NodeExpr]          = positioned(parseFactor    ) * (line("**") ^^^ {(x: NodeExpr, y: NodeExpr) => new NodeExpr(x, "**", y)})
 
     /* values */
 
@@ -67,10 +67,10 @@ class Parser(val source: String) extends StdTokenParsers
         | "!" ~> ^(positioned(parseFactor)) ^^ (new NodeExpr(null, "!", _))
         |          positioned(parseRValue)  ^^ (new NodeExpr(_, null, null)))
 
-    private lazy val parseModOp         : Parser[String]            = guard(tail(".") | tail("[") | tail("("))
+    private lazy val parseModOp         : Parser[String]            = guard(line(".") | tail("[") | tail("("))
     private lazy val parseRValue        : Parser[NodeValue]         = positioned(parseBaseValue) ~ parseRModifiers ^^ { case value ~ rmods => new NodeValue(value, rmods, isRValue = true ) }
     private lazy val parseLValue        : Parser[NodeValue]         =
-        ( parseSetName <~ not(parseModOp)               ^^ (new NodeValue(_, Nil, isRValue = false))
+        ( positioned(parseSetName) <~ not(parseModOp)   ^^ (new NodeValue(_, Nil, isRValue = false))
         | positioned(parseBaseValue) ~ parseLModifiers  ^^ { case value ~ lmods => new NodeValue(value, lmods, isRValue = false) })
 
     private lazy val parseBaseValue     : Parser[AST]               =
@@ -83,7 +83,7 @@ class Parser(val source: String) extends StdTokenParsers
         | positioned(parseArray         )
         | positioned(parseMap           )
         | positioned(parseGetName       )
-        | tail("(") ~> ^(positioned(parseExpr)) <~ ^(line(")")))
+        | line("(") ~> ^(positioned(parseExpr)) <~ ^(line(")")))
 
     private lazy val parseLModifiers    : Parser[List[AST]]         = (
         ( positioned(parseInvokeStack   )
@@ -125,37 +125,35 @@ class Parser(val source: String) extends StdTokenParsers
         ( line(">") ~> ^(positioned(parseSetName)) <~ (^(guard(")")) withErrorMessage "variadic must be the last one of formal arguments") ^^ (new NodeFormalArg(_, variadic = true))
         |                positioned(parseSetName)                                                                                          ^^ (new NodeFormalArg(_, variadic = false)))
 
-    private lazy val parseItem          : Parser[NodeMapItem]       = positioned(parseExpr) ~ (^(tail(":")) ~> ^(positioned(parseExpr)))         ^^ { case key ~ value => new NodeMapItem(key, value) }
-    private lazy val parseInvokeAttr    : Parser[NodeInvokeAttr]    = tail(".") ~> ^(positioned(parseGetName)) ~ ^(positioned(parseInvokeStack)) ^^ { case attr ~ invoke => new NodeInvokeAttr(attr, invoke) }
+    private lazy val parseItem          : Parser[NodeMapItem]       = positioned(parseExpr) ~ (^(line(":")) ~> ^(positioned(parseExpr)))         ^^ { case key ~ value => new NodeMapItem(key, value) }
+    private lazy val parseInvokeAttr    : Parser[NodeInvokeAttr]    = line(".") ~> ^(positioned(parseGetName)) ~ ^(positioned(parseInvokeStack)) ^^ { case attr ~ invoke => new NodeInvokeAttr(attr, invoke) }
 
     private lazy val parseGetName       : Parser[NodeName]          = positioned(ident ^^ (new NodeName(_, isGet = true)))
     private lazy val parseSetName       : Parser[NodeName]          = positioned(ident ^^ (new NodeName(_, isGet = false)))
 
-    private lazy val parseGetAttr       : Parser[NodeAttr]          = tail(".") ~> ^(positioned(parseGetName))                  ^^ (new NodeAttr(_, isGet = true))
+    private lazy val parseGetAttr       : Parser[NodeAttr]          = line(".") ~> ^(positioned(parseGetName))                  ^^ (new NodeAttr(_, isGet = true))
     private lazy val parseGetIndex      : Parser[NodeIndex]         = tail("[") ~> ^(positioned(parseExpr   )) <~ ^(line("]"))  ^^ (new NodeIndex(_, isGet = true))
 
-    private lazy val parseSetAttr       : Parser[NodeAttr]          = tail(".") ~> ^(positioned(parseGetName))                  ^^ (new NodeAttr(_, isGet = false))
+    private lazy val parseSetAttr       : Parser[NodeAttr]          = line(".") ~> ^(positioned(parseGetName))                  ^^ (new NodeAttr(_, isGet = false))
     private lazy val parseSetIndex      : Parser[NodeIndex]         = tail("[") ~> ^(positioned(parseExpr   )) <~ ^(line("]"))  ^^ (new NodeIndex(_, isGet = false))
     private lazy val parseGetSubTuple   : Parser[NodeRTuple]        = line("(") ~>   positioned(parseGetTuple) <~ ^(line(")"))
     private lazy val parseSetSubTuple   : Parser[NodeLTuple]        = line("(") ~>   positioned(parseSetTuple) <~ ^(line(")"))
 
     private lazy val parseGetTuple      : Parser[NodeRTuple]         =
-        ( positioned(parseGetSubTuple   ) <~ tail(",") ^^ (Left(_))
-        | positioned(parseExpr          ) <~ tail(",") ^^ (Right(_))
+        ( positioned(parseGetSubTuple   ) <~ "," ^^ (Left(_))
+        | positioned(parseExpr          ) <~ "," ^^ (Right(_))
         ) ~
         repsep( positioned(parseGetSubTuple ) ^^ (Left(_))
-              | positioned(parseExpr        ) ^^ (Right(_))
-        , tail(",")) ^^ {
+              | positioned(parseExpr        ) ^^ (Right(_)), ",") ^^ {
             case first ~ rest => new NodeRTuple(first :: rest)
         }
 
     private lazy val parseSetTuple      : Parser[NodeLTuple]         =
-        ( positioned(parseSetSubTuple   ) <~ tail(",") ^^ (Left(_))
-        | positioned(parseLValue        ) <~ tail(",") ^^ (Right(_))
+        ( positioned(parseSetSubTuple   ) <~ "," ^^ (Left(_))
+        | positioned(parseLValue        ) <~ "," ^^ (Right(_))
         ) ~
         repsep( positioned(parseSetSubTuple ) ^^ (Left(_))
-              | positioned(parseLValue      ) ^^ (Right(_))
-        , tail(",")) ^^ {
+              | positioned(parseLValue      ) ^^ (Right(_)), ",") ^^ {
             case first ~ rest => new NodeLTuple(first :: rest)
         }
 
@@ -167,6 +165,7 @@ class Parser(val source: String) extends StdTokenParsers
         | positioned(parseFor           ) ^^ (new NodeStatement(_))
         | positioned(parseTry           ) ^^ (new NodeStatement(_))
         | positioned(parseBreak         ) ^^ (new NodeStatement(_))
+        | positioned(parseRaise         ) ^^ (new NodeStatement(_))
         | positioned(parseWhile         ) ^^ (new NodeStatement(_))
         | positioned(parseReturn        ) ^^ (new NodeStatement(_))
         | positioned(parseSwitch        ) ^^ (new NodeStatement(_))
@@ -183,16 +182,17 @@ class Parser(val source: String) extends StdTokenParsers
     private lazy val parseBreak         : Parser[NodeBreak]         = line("break"   ) ^^^ new NodeBreak
     private lazy val parseContinue      : Parser[NodeContinue]      = line("continue") ^^^ new NodeContinue
 
+    private lazy val parseRaise         : Parser[NodeRaise]         = line("raise") ~> ^(positioned(parseExpr)) ^^ (new NodeRaise(_))
     private lazy val parseReturn        : Parser[NodeReturn]        = line("return") ~>
         ^(positioned(parseGetTuple  ) ^^ (Left(_))
         | positioned(parseExpr      ) ^^ (Right(_))) ^^ (new NodeReturn(_))
 
-    private lazy val parseIncOp         : Parser[String]            = tail("+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" | ">>=")
+    private lazy val parseIncOp         : Parser[String]            = line("+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" | ">>=")
     private lazy val parseIncrement     : Parser[NodeIncrement]     = positioned(parseLValue) ~ parseIncOp ~ ^(positioned(parseExpr)) ^^ { case target ~ op ~ expr => new NodeIncrement(target, op, expr) }
     private lazy val parseAssignment    : Parser[NodeAssignment]    = ((
         ( positioned(parseSetTuple  ) ^^ (Left(_))
         | positioned(parseLValue    ) ^^ (Right(_))
-        ) <~ tail("=")) +) ~
+        ) <~ line("=")) +) ~
         ^(positioned(parseGetTuple  ) ^^ (Left(_))
         | positioned(parseExpr      ) ^^ (Right(_))
         ) ^^ {
@@ -227,7 +227,7 @@ class Parser(val source: String) extends StdTokenParsers
         }
 
     private lazy val parseExceptType    : Parser[List[NodeName]]    = rep1sep(positioned(parseGetName), line("."))
-    private lazy val parseExceptName    : Parser[Option[NodeName]]  = opt(positioned(parseGetName) <~ line(":"))
+    private lazy val parseExceptName    : Parser[Option[NodeName]]  = (positioned(parseSetName) <~ line(":")) ?
 
     private lazy val parseExceptBlock   : Parser[NodeExcept]        =
         (line("case") ~> ^(parseExceptName ~ rep1sep(parseExceptType, line("|"))) ~
@@ -267,7 +267,7 @@ class Parser(val source: String) extends StdTokenParsers
     /* compiler part */
 
     private lazy val script = source + CharArrayReader.EofCh
-    private lazy val program = (positioned(parseStatement) +) <~ lexical.EOF
+    private lazy val program = (lexical.NewLine *) ~> (positioned(parseStatement) +) <~ lexical.EOF
 
     def parse = program(new lexical.Scanner(script)) match
     {
