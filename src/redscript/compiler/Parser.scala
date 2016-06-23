@@ -271,7 +271,7 @@ class Parser(val source: String) extends StdTokenParsers
 
     def parse = program(new lexical.Scanner(script)) match
     {
-        case Success(result, next)    => println(next.pos); result
-        case NoSuccess(message, next) => throw new SyntaxError(message, next.pos.line, next.pos.column)
+        case Success(result, _)     => result
+        case NoSuccess(error, next) => throw new SyntaxError(error, next.pos.line, next.pos.column)
     }
 }
