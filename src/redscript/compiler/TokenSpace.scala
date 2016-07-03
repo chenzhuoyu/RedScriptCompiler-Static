@@ -24,8 +24,20 @@ trait TokenSpace extends StdTokens
         override def toString: String = chars
     }
 
+    case class BooleanLit(value: Boolean) extends Token
+    {
+        override def chars: String = value.toString
+        override def toString: String = chars
+    }
+
     case object NewLine extends Token
     {
         override def chars: String = "<NewLine>"
+    }
+
+    case object NullLit extends Token
+    {
+        override def chars: String = "null"
+        override def toString: String = chars
     }
 }

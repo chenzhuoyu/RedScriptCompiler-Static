@@ -30,8 +30,16 @@ object Main extends App
 
     val src =
         """
-          | f = (x, y) => return x + y
-          | println(f(1, 2))
+          | import java.lang.Object
+          |
+          | class Foo :: Object(Interface1, InterfaceB) {
+          |     x = 1
+          |     y = null
+          |
+          |     def __init__(self) => {
+          |         println(self)
+          |     }
+          | }
           |
         """.stripMargin
     val parser = new Parser(src)

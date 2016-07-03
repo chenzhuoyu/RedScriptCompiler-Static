@@ -2,6 +2,7 @@ package redscript.compiler
 
 import redscript.compiler.ast._
 
+import scala.collection.mutable
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.parsing.combinator.syntactical.StdTokenParsers
 import scala.util.parsing.input.CharArrayReader
@@ -14,7 +15,7 @@ class Parser(val source: String) extends StdTokenParsers
     /* helper methods */
 
     private def ^[T](p: Parser[T]): Parser[T] = commit(p)
-    private def line[T](p: Parser[T]): Parser[T] = p <~ (lexical.NewLine *)
+    private def line[T](p: Parser[T]): Parser[T] = (lexical.NewLine *) ~> p <~ guard(lexical.NewLine *)
     private def tail[T](p: Parser[T]): Parser[T] = not(lexical.NewLine) ~> p <~ guard(lexical.NewLine *)
 
     /* implicit converters for parsing expressions */
@@ -29,10 +30,12 @@ class Parser(val source: String) extends StdTokenParsers
 
     /* literals */
 
-    private lazy val parseIntConst      : Parser[NodeIntConst]      = positioned(accept("int"   , { case lexical.IntLit(value)    => new NodeIntConst(value)    }))
-    private lazy val parseLongConst     : Parser[NodeLongConst]     = positioned(accept("int"   , { case lexical.LongLit(value)   => new NodeLongConst(value)   }))
-    private lazy val parseFloatConst    : Parser[NodeFloatConst]    = positioned(accept("float" , { case lexical.FloatLit(value)  => new NodeFloatConst(value)  }))
-    private lazy val parseStringConst   : Parser[NodeStringConst]   = positioned(accept("string", { case lexical.StringLit(value) => new NodeStringConst(value) }))
+    private lazy val parseNull          : Parser[NodeNull]          = positioned(accept("nil"       , { case lexical.NullLit            => new NodeNull                 }))
+    private lazy val parseIntConst      : Parser[NodeIntConst]      = positioned(accept("int"       , { case lexical.IntLit(value)      => new NodeIntConst(value)      }))
+    private lazy val parseLongConst     : Parser[NodeLongConst]     = positioned(accept("int"       , { case lexical.LongLit(value)     => new NodeLongConst(value)     }))
+    private lazy val parseFloatConst    : Parser[NodeFloatConst]    = positioned(accept("float"     , { case lexical.FloatLit(value)    => new NodeFloatConst(value)    }))
+    private lazy val parseStringConst   : Parser[NodeStringConst]   = positioned(accept("string"    , { case lexical.StringLit(value)   => new NodeStringConst(value)   }))
+    private lazy val parseBooleanConst  : Parser[NodeBooleanConst]  = positioned(accept("boolean"   , { case lexical.BooleanLit(value)  => new NodeBooleanConst(value)  }))
 
     /* expressions */
 
@@ -74,10 +77,12 @@ class Parser(val source: String) extends StdTokenParsers
         | positioned(parseBaseValue) ~ parseLModifiers  ^^ { case value ~ lmods => new NodeValue(value, lmods, isRValue = false) })
 
     private lazy val parseBaseValue     : Parser[AST]               =
-        ( positioned(parseIntConst      )
+        ( positioned(parseNull          )
+        | positioned(parseIntConst      )
         | positioned(parseLongConst     )
         | positioned(parseFloatConst    )
         | positioned(parseStringConst   )
+        | positioned(parseBooleanConst  )
         | positioned(parseLambda        )
         | positioned(parseRange         )
         | positioned(parseArray         )
@@ -139,7 +144,7 @@ class Parser(val source: String) extends StdTokenParsers
     private lazy val parseGetSubTuple   : Parser[NodeRTuple]        = line("(") ~>   positioned(parseGetTuple) <~ ^(line(")"))
     private lazy val parseSetSubTuple   : Parser[NodeLTuple]        = line("(") ~>   positioned(parseSetTuple) <~ ^(line(")"))
 
-    private lazy val parseGetTuple      : Parser[NodeRTuple]         =
+    private lazy val parseGetTuple      : Parser[NodeRTuple]        =
         ( positioned(parseGetSubTuple   ) <~ "," ^^ (Left(_))
         | positioned(parseExpr          ) <~ "," ^^ (Right(_))
         ) ~
@@ -148,7 +153,7 @@ class Parser(val source: String) extends StdTokenParsers
             case first ~ rest => new NodeRTuple(first :: rest)
         }
 
-    private lazy val parseSetTuple      : Parser[NodeLTuple]         =
+    private lazy val parseSetTuple      : Parser[NodeLTuple]        =
         ( positioned(parseSetSubTuple   ) <~ "," ^^ (Left(_))
         | positioned(parseLValue        ) <~ "," ^^ (Right(_))
         ) ~
@@ -159,14 +164,16 @@ class Parser(val source: String) extends StdTokenParsers
 
     /* statements */
 
-    private lazy val parseCompond       : Parser[NodeCompond]       = line("{") ~> (positioned(parseStatement) *) <~ ^(line("}")) ^^ (new NodeCompond(_))
-    private lazy val parseStatement     : Parser[NodeStatement]     =
+    private lazy val parseCompond       : Parser[NodeCompond]       = line("{") ~> (positioned(parseStatement) *) <~ ^(lexical.NewLine *) <~ ^(line("}")) ^^ (new NodeCompond(_))
+    private lazy val parseStatement     : Parser[NodeStatement]     = (lexical.NewLine *) ~>
         ( positioned(parseIf            ) ^^ (new NodeStatement(_))
         | positioned(parseFor           ) ^^ (new NodeStatement(_))
         | positioned(parseTry           ) ^^ (new NodeStatement(_))
         | positioned(parseBreak         ) ^^ (new NodeStatement(_))
+        | positioned(parseClass         ) ^^ (new NodeStatement(_))
         | positioned(parseRaise         ) ^^ (new NodeStatement(_))
         | positioned(parseWhile         ) ^^ (new NodeStatement(_))
+        | positioned(parseImport        ) ^^ (new NodeStatement(_))
         | positioned(parseReturn        ) ^^ (new NodeStatement(_))
         | positioned(parseSwitch        ) ^^ (new NodeStatement(_))
         | positioned(parseCompond       ) ^^ (new NodeStatement(_))
@@ -175,7 +182,7 @@ class Parser(val source: String) extends StdTokenParsers
         | positioned(parseAssignment    ) ^^ (new NodeStatement(_))
         | positioned(parseFunctionDef   ) ^^ (new NodeStatement(_))
         | positioned(parseExpr          ) ^^ (new NodeStatement(_))
-        ) <~ (";" | guard(lexical.EOF) | (lexical.NewLine *))
+        ) <~ ^(";" | guard(lexical.EOF) | guard(lexical.NewLine +))
 
     /* language structures */
 
@@ -183,6 +190,7 @@ class Parser(val source: String) extends StdTokenParsers
     private lazy val parseContinue      : Parser[NodeContinue]      = line("continue") ^^^ new NodeContinue
 
     private lazy val parseRaise         : Parser[NodeRaise]         = line("raise") ~> ^(positioned(parseExpr)) ^^ (new NodeRaise(_))
+    private lazy val parseImport        : Parser[NodeImport]        = line("import") ~> ^(parseClassName)       ^^ (new NodeImport(_))
     private lazy val parseReturn        : Parser[NodeReturn]        = line("return") ~>
         ^(positioned(parseGetTuple  ) ^^ (Left(_))
         | positioned(parseExpr      ) ^^ (Right(_))) ^^ (new NodeReturn(_))
@@ -226,13 +234,33 @@ class Parser(val source: String) extends StdTokenParsers
             case body ~ _ ~ Some(excepts) ~      finalizer  => new NodeTry(body, excepts,  finalizer)
         }
 
-    private lazy val parseExceptType    : Parser[List[NodeName]]    = rep1sep(positioned(parseGetName), line("."))
+    private lazy val parseClassName     : Parser[List[NodeName]]    = rep1sep(positioned(parseGetName), line("."))
     private lazy val parseExceptName    : Parser[Option[NodeName]]  = (positioned(parseSetName) <~ line(":")) ?
 
     private lazy val parseExceptBlock   : Parser[NodeExcept]        =
-        (line("case") ~> ^(parseExceptName ~ rep1sep(parseExceptType, line("|"))) ~
+        (line("case") ~> ^(parseExceptName ~ rep1sep(parseClassName, line("|"))) ~
         (^(line("=>")) ~> ^(positioned(parseStatement)))) ^^ {
             case name ~ excepts ~ body => new NodeExcept(name, excepts, body)
+        }
+
+    private lazy val parseField         : Parser[NodeField]         = positioned(parseSetName) ~ line("=") ~ ^(positioned(parseExpr)) ^^ { case name ~ "=" ~ expr => new NodeField(name, expr) }
+    private lazy val parseClass         : Parser[NodeClass]         =
+        (line("class") ~> ^(positioned(parseSetName))) ~
+        (line("::")     ~> ^(parseClassName)) ~
+        (line("(")     ~> repsep(parseClassName, line(",")) <~ ^(line(")"))) ~
+        (^(line("{"))  ~> (((lexical.NewLine *) ~> positioned(parseClass | parseField | parseFunctionDef)) *) <~ ^(line("}"))) ^^ {
+            case name ~ parent ~ interfaces ~ body =>
+                val fields = mutable.MutableList[NodeField]()
+                val classes = mutable.MutableList[NodeClass]()
+                val methods = mutable.MutableList[NodeFunctionDef]()
+
+                body foreach {
+                    case item: NodeField       => fields  += item
+                    case item: NodeClass       => classes += item
+                    case item: NodeFunctionDef => methods += item
+                }
+
+                new NodeClass(name, parent, interfaces, fields.toList, methods.toList, classes.toList)
         }
 
     private lazy val parseWhile         : Parser[NodeWhile]         =
@@ -267,7 +295,7 @@ class Parser(val source: String) extends StdTokenParsers
     /* compiler part */
 
     private lazy val script = source + CharArrayReader.EofCh
-    private lazy val program = (lexical.NewLine *) ~> (positioned(parseStatement) +) <~ lexical.EOF
+    private lazy val program = (positioned(parseStatement) +) <~ ^(lexical.NewLine *) <~ ^(lexical.EOF)
 
     def parse = program(new lexical.Scanner(script)) match
     {

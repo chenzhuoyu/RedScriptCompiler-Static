@@ -30,6 +30,7 @@ class Tokenizer extends StdLexical with TokenSpace with RegexParsers
         "break",
         "class",
         "raise",
+        "super",
         "while",
         "delete",
         "except",
@@ -53,7 +54,7 @@ class Tokenizer extends StdLexical with TokenSpace with RegexParsers
         "**=", "+=" , "-=", "*=", "/=", "%=",
         "**" , "+"  , "-" , "*" , "/" , "%" ,
         ".." , "."  , "," ,
-        ":"  , "@"  , "`" , "$" , ";"
+        "::" , ":"  , "@" , ";"
     )
 
     private def stringOf(p: => Parser[Char]): Parser[String] = rep1(p) ^^ (_.mkString)
@@ -82,7 +83,7 @@ class Tokenizer extends StdLexical with TokenSpace with RegexParsers
         | 'r' ^^^ '\r'
         | 't' ^^^ '\t')
 
-    private lazy val identifier: Parser[Token] = """[\p{javaUnicodeIdentifierStart}][\p{javaUnicodeIdentifierPart}']*""".r ^^ processIdent
+    private lazy val identifier: Parser[Token] = """[\p{javaJavaIdentifierStart}\p{javaUnicodeIdentifierStart}][\p{javaJavaIdentifierPart}\p{javaUnicodeIdentifierPart}]*""".r ^^ processIdent
     private lazy val numberLiteral: Parser[Token] =
         ( stringOf(digit) ~ ('.' ~> stringOf(digit))                        ^^ { case int ~ fract => FloatLit(s"$int.$fract".toDouble) }
         | ('0' ~ 'b') ~> stringOf(binaryDigit     ) ~ opt(elem('l') | 'L')  ^^ { case value ~ None => convertInt(value,  2) case value ~ Some(_) => LongLit(new BigInteger(value,  2)) }
@@ -118,9 +119,13 @@ class Tokenizer extends StdLexical with TokenSpace with RegexParsers
     override def whitespace: Parser[Any] = (comment | whitespaceChar | ('\\' ~ (elem('\f') | '\r' | '\n' | '\u0085' | '\u2028' | '\u2029'))) *
     override def whitespaceChar: Parser[Char] = elem("whitespace characters", ch => ch != EofCh && ch.isWhitespace && !"\f\r\n\u0085\u2028\u2029".contains(ch))
 
-    override protected def processIdent(identifier: String) =
+    override protected def processIdent(identifier: String) = identifier match
     {
-        val form = Normalizer.Form.NFC
-        super.processIdent(Normalizer.normalize(identifier, form))
+        case "null"  => NullLit
+        case "true"  => BooleanLit(true)
+        case "false" => BooleanLit(false)
+        case _       => super.processIdent(Normalizer.normalize(identifier, Normalizer.Form.NFC))
     }
+
+    java.lang.Character.isUnicodeIdentifierStart(123)
 }
